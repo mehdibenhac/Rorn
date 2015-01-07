@@ -12,8 +12,12 @@ from Box import Box, ErrorBox
 from code import showCode
 from ResponseWriter import ResponseWriter
 from FrameworkException import FrameworkException
-from stasis import StasisError
 from utils import *
+
+try:
+	from stasis import StasisError
+except ImportError:
+	class StatisError: pass
 
 handlers = {'get': {}, 'post': {}}
 
@@ -82,7 +86,7 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 					break
 
 			if not self.handler:
-				self.error("Invalid request", "Unknown %s action <b>%s</b>" % (method.upper(), path if path != '' else "No empty action handler"))
+				self.error("Invalid request", "Unknown %s action <b>%s</b>" % (method.upper(), path or '/'))
 
 			given = query.keys()
 			expected, _, _, defaults = getargspec(self.handler['fn'])
