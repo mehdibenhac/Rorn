@@ -22,18 +22,18 @@ except ImportError:
 handlers = {'get': {}, 'post': {}}
 
 @globalize
-def get(index, **kw):
+def get(index, action = None, **kw):
 	def wrap(f):
 		kw['fn'] = f
-		handlers['get'][re.compile("^%s$" % index)] = kw
+		handlers['get'][re.compile("^%s$" % index), action] = kw
 		return f
 	return wrap
 
 @globalize
-def post(index, **kw):
+def post(index, action = None, **kw):
 	def wrap(f):
 		kw['fn'] = f
-		handlers['post'][re.compile("^%s$" % index)] = kw
+		handlers['post'][re.compile("^%s$" % index), action] = kw
 		return f
 	return wrap
 
@@ -75,18 +75,27 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 			path = path[1:]
 			if len(path) and path[-1] == '/': path = path[:-1]
 			path = unquote(path)
-			for pattern in handlers[method]:
+			specAction = query.get('action', query.get('p_action', None))
+			for (pattern, action), handler in handlers[method].iteritems():
 				match = pattern.match(path)
 				if match:
-					self.handler = handlers[method][pattern]
+					if action is not None:
+						if action == specAction:
+							if 'action' in query:
+								del query['action']
+							else:
+								del query['p_action']
+						else: # Wrong action specifier (or none provided; taking a SFINAE approach and assuming another matching route won't need it)
+							continue
+					self.handler = handler
 					for k, v in match.groupdict().items():
 						if k in query:
 							self.error("Invalid request", "Duplicate key in request: %s" % k)
 						query[k] = v
 					break
 
-			if not self.handler:
-				self.error("Invalid request", "Unknown %s action <b>%s</b>" % (method.upper(), path or '/'))
+			if self.handler is None:
+				self.error("Invalid request", "Unknown %s action <b>%s%s</b>" % (method.upper(), path or '/', " [%s]" % specAction if specAction else ''))
 
 			given = query.keys()
 			expected, _, _, defaults = getargspec(self.handler['fn'])
