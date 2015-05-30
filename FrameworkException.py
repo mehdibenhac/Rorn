@@ -1,4 +1,5 @@
 from __future__ import with_statement
+import os
 import traceback
 
 from ResponseWriter import ResponseWriter
@@ -26,8 +27,7 @@ div.details {
 }
 """
 
-		#HACK
-		with open('static/syntax-highlighting.css') as f:
+		with open(os.path.join(os.path.dirname(__file__), 'syntax-highlighting.css')) as f:
 			print ''.join(f.readlines())
 
 		print "</style>"

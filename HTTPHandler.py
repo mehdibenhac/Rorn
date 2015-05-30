@@ -17,7 +17,7 @@ from utils import *
 try:
 	from stasis import StasisError
 except ImportError:
-	class StatisError: pass
+	class StasisError: pass
 
 handlers = {'get': {}, 'post': {}}
 
