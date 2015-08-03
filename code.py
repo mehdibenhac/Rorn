@@ -1,5 +1,4 @@
 from __future__ import with_statement
-from SilverCity import Python as SyntaxHighlighter
 from StringIO import StringIO
 import sys
 from os.path import abspath, isabs, isfile
@@ -8,6 +7,11 @@ from ResponseWriter import ResponseWriter
 from rorn.Box import Box, ErrorBox
 from rorn.Lock import synchronized
 from utils import *
+
+try:
+	from SilverCity import Python as SyntaxHighlighter
+except ImportError:
+	SyntaxHighlighter = None
 
 def showCode(filename, line, around = None):
 	parsedFilename = filename if isabs(filename) else abspath("%s/%s" % (basePath(), filename))
@@ -35,6 +39,8 @@ def showCode(filename, line, around = None):
 
 @synchronized('silvercity')
 def highlightCode(text):
+	if SyntaxHighlighter is None:
+		return text
 	target = StringIO()
 	SyntaxHighlighter.PythonHTMLGenerator().generate_html(target, text)
 	return target.getvalue()
