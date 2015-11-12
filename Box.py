@@ -3,6 +3,14 @@ from random import randint
 from ResponseWriter import ResponseWriter
 from utils import *
 
+classnames = {
+	'base': 'alert-message',
+	'info': 'info',
+	'success': 'success',
+	'warning': 'warning',
+	'error': 'error',
+}
+
 class Box:
 	def __init__(self, title, text = None, id = None, clr = 'black'):
 		if text:
@@ -43,7 +51,7 @@ class AlertBox:
 		self.fixed = fixed
 
 	def getClasses(self):
-		return ['alert-message'] + (['fixed'] if self.fixed else [])
+		return [classnames['base']] + (['fixed'] if self.fixed else [])
 
 	def __str__(self):
 		writer = ResponseWriter()
@@ -72,28 +80,28 @@ class InfoBox(AlertBox):
 		AlertBox.__init__(self, *args, **kargs)
 
 	def getClasses(self):
-		return AlertBox.getClasses(self) + ['info']
+		return AlertBox.getClasses(self) + [classnames['info']]
 
 class SuccessBox(AlertBox):
 	def __init__(self, *args, **kargs):
 		AlertBox.__init__(self, *args, **kargs)
 
 	def getClasses(self):
-		return AlertBox.getClasses(self) + ['success']
+		return AlertBox.getClasses(self) + [classnames['success']]
 
 class WarningBox(AlertBox):
 	def __init__(self, *args, **kargs):
 		AlertBox.__init__(self, *args, **kargs)
 
 	def getClasses(self):
-		return AlertBox.getClasses(self) + ['warning']
+		return AlertBox.getClasses(self) + [classnames['warning']]
 
 class ErrorBox(AlertBox):
 	def __init__(self, *args, **kargs):
 		AlertBox.__init__(self, *args, **kargs)
 
 	def getClasses(self):
-		return AlertBox.getClasses(self) + ['error']
+		return AlertBox.getClasses(self) + [classnames['error']]
 
 	@staticmethod
 	def die(*args):
