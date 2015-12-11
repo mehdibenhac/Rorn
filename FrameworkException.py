@@ -1,4 +1,5 @@
 from __future__ import with_statement
+from bleach import clean
 import os
 import traceback
 
@@ -34,7 +35,7 @@ div.details {
 
 		print "<div class=\"error\">"
 		print "<b>Unexpected framework exception caught in rorn before action dispatching:</b><br>"
-		print "<div class=\"details\">%s: %s</div>" % (self.exc[0].__name__, str(self.exc[1]).replace('\n', '<br>'))
+		print "<div class=\"details\">%s: %s</div>" % (clean(self.exc[0].__name__), clean(str(self.exc[1])).replace('\n', '<br>'))
 
 		tb = self.exc[2]
 		try:
