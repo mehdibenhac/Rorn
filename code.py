@@ -1,4 +1,5 @@
 from __future__ import with_statement
+from bleach import clean
 from StringIO import StringIO
 import sys
 from os.path import abspath, isabs, isfile
@@ -40,7 +41,7 @@ def showCode(filename, line, around = None):
 @synchronized('silvercity')
 def highlightCode(text):
 	if SyntaxHighlighter is None:
-		return text
+		return '<br/>'.join(map(clean, text.split('\n')))
 	target = StringIO()
 	SyntaxHighlighter.PythonHTMLGenerator().generate_html(target, text)
 	return target.getvalue()
