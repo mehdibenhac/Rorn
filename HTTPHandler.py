@@ -94,6 +94,8 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 						query[k] = v
 					break
 
+			query = self.preprocessQuery(query)
+
 			if self.handler is None:
 				self.error("Invalid request", "Unknown %s action <b>%s%s</b>" % (method.upper(), path or '/', " [%s]" % specAction if specAction else ''))
 
@@ -263,6 +265,8 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 	def title(self, title): pass
 
 	def processingRequest(self): pass
+
+	def preprocessQuery(self, query): return query
 
 	def invokeHandler(self, handler, query):
 		handler['fn'](handler = self, **query)
