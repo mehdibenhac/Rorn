@@ -33,7 +33,7 @@ def pluralize(num, singular, plural):
 	return "%d %s" % (num, singular if num == 1 else plural)
 
 def globalize(f):
-	__builtins__[f.func_name] = f
+	__builtins__[f.__name__] = f
 	return f
 
 def basePath():
@@ -44,16 +44,16 @@ def formatException():
 	return "<b>%s: %s</b><br><br>%s" % (clean(type.__name__), clean(str(e)).replace('\n', '<br>'), formatTrace(traceback.extract_tb(tb)))
 
 def formatTrace(frames):
-	from code import highlightCode
-	from ResponseWriter import ResponseWriter
+	from .code import highlightCode
+	from .ResponseWriter import ResponseWriter
 	writer = ResponseWriter()
 	base = basePath()
 	lpad = len(base) + 1
-	print "<div class=\"code_default light\" style=\"padding: 4px\">"
+	print("<div class=\"code_default light\" style=\"padding: 4px\">")
 	for filename, line, fn, stmt in frames:
-		print "<div class=\"code_header\">%s:%s(%d)</div>" % (clean(filename[lpad:]) if filename.startswith(base) else "<i>%s</i>" % clean(filename.split('/')[-1]), clean(fn), line)
-		print "<div style=\"padding: 0px 0px 10px 20px\">"
-		print highlightCode(stmt)
-		print "</div>"
-	print "</div>"
+		print("<div class=\"code_header\">%s:%s(%d)</div>" % (clean(filename[lpad:]) if filename.startswith(base) else "<i>%s</i>" % clean(filename.split('/')[-1]), clean(fn), line))
+		print("<div style=\"padding: 0px 0px 10px 20px\">")
+		print(highlightCode(stmt))
+		print("</div>")
+	print("</div>")
 	return writer.done()

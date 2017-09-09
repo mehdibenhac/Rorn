@@ -1,7 +1,7 @@
 import sys
-from thread import get_ident
+from _thread import get_ident
 
-from Lock import synchronized
+from .Lock import synchronized
 
 class ResponseWriterManager:
 	def __init__(self):

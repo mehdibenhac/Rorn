@@ -1,23 +1,23 @@
-from BaseHTTPServer import BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler
 from inspect import getargspec
 from collections import defaultdict
 import re
 import cgi
 import sys
-from urllib import unquote
+from urllib.parse import unquote
 import traceback
 
-from Session import Session, timestamp
-from Box import Box, ErrorBox
-from code import showCode
-from ResponseWriter import ResponseWriter
-from FrameworkException import FrameworkException
-from utils import *
+from .Session import Session, timestamp
+from .Box import Box, ErrorBox
+from .code import showCode
+from .ResponseWriter import ResponseWriter
+from .FrameworkException import FrameworkException
+from .utils import *
 
 try:
 	from stasis import StasisError
 except ImportError:
-	class StasisError: pass
+	class StasisError(BaseException): pass
 
 handlers = {'get': {}, 'post': {}}
 
@@ -69,14 +69,14 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 					self.error("Invalid request", "Illegal query key: %s" % key)
 
 			# Add POST params to query with a p_ prefix
-			query.update(dict([('p_' + k, v) for (k, v) in postData.iteritems()]))
+			query.update(dict([('p_' + k, v) for (k, v) in postData.items()]))
 
 			assert path[0] == '/'
 			path = path[1:]
 			if len(path) and path[-1] == '/': path = path[:-1]
 			path = unquote(path)
 			specAction = query.get('action', query.get('p_action', None))
-			for (pattern, action), handler in handlers[method].iteritems():
+			for (pattern, action), handler in handlers[method].items():
 				match = pattern.match(path)
 				if match:
 					if action is not None:
@@ -88,7 +88,7 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 						else: # Wrong action specifier (or none provided; taking a SFINAE approach and assuming another matching route won't need it)
 							continue
 					self.handler = handler
-					for k, v in match.groupdict().items():
+					for k, v in list(match.groupdict().items()):
 						if k in query:
 							self.error("Invalid request", "Duplicate key in request: %s" % k)
 						query[k] = v
@@ -99,7 +99,7 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 			if self.handler is None:
 				self.error("Invalid request", "Unknown %s action <b>%s%s</b>" % (method.upper(), path or '/', " [%s]" % specAction if specAction else ''))
 
-			given = query.keys()
+			given = list(query.keys())
 			expected, _, _, defaults = getargspec(self.handler['fn'])
 			defaults = defaults or []
 
@@ -123,7 +123,7 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 
 			self.invokeHandler(self.handler, query)
 		except DoneRendering: pass
-		except StasisError, e:
+		except StasisError as e:
 			writer.clear()
 			self.title('Database Error')
 			self.error('Database Error', e.message, False)
@@ -136,7 +136,7 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 		self.requestDone()
 		# self.leftMenu.clear()
 
-		for (fromStr, toStr, count) in self.replacements.values():
+		for (fromStr, toStr, count) in list(self.replacements.values()):
 			self.response = self.response.replace(fromStr, toStr, count)
 
 	def parseQueryString(self, query):
@@ -212,7 +212,7 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 		headers.update(additionalHeaders)
 
 		self.send_response(self.responseCode)
-		for name, value in headers.iteritems():
+		for name, value in headers.items():
 			self.send_header(name, value)
 		self.end_headers()
 
@@ -220,9 +220,9 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 		try:
 			BaseHTTPRequestHandler.handle_one_request(self)
 		except:
-			self.response = str(FrameworkException(sys.exc_info()))
+			self.response = str(FrameworkException(sys.exc_info())).encode('utf8')
 			self.sendHead(includeCookie = False)
-			self.wfile.write(self.response)
+			self.wfile.write(self.response.encode('utf8'))
 			raise
 
 	def do_HEAD(self, method = 'get', postData = {}):
@@ -239,7 +239,7 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 
 	def do_GET(self):
 		self.do_HEAD('get')
-		self.wfile.write(self.response)
+		self.wfile.write(self.response.encode('utf8'))
 
 	def do_POST(self):
 		form = cgi.FieldStorage(fp = self.rfile, headers = self.headers, environ = {'REQUEST_METHOD': 'POST'}, keep_blank_values = True)
@@ -258,7 +258,7 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 		self.wfile.write(self.response)
 
 	def error(self, title, text, isDone = True):
-		print ErrorBox(title, text)
+		print(ErrorBox(title, text))
 		if isDone:
 			done()
 
@@ -275,6 +275,6 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 
 	def unhandledError(self):
 		self.title('Unhandled Error')
-		print Box('Unhandled Error', formatException(), clr = 'red')
+		print(Box('Unhandled Error', formatException(), clr = 'red'))
 		filename, line, fn, stmt = traceback.extract_tb(sys.exc_info()[2])[-1]
 		showCode(filename, line, 5)

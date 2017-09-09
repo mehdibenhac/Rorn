@@ -1,4 +1,4 @@
-from BaseHTTPServer import HTTPServer as ParentServer
+from http.server import HTTPServer as ParentServer
 from datetime import datetime
 from threading import Thread
 

@@ -1,10 +1,10 @@
 import functools
 import sys
-from thread import get_ident
-from threading import _Semaphore as Semaphore, _RLock as RLock
+from _thread import get_ident
+from threading import Semaphore, _RLock as RLock
 from uuid import uuid1 as uuid
 
-from utils import *
+from .utils import *
 
 locks = {}
 counters = {}
@@ -67,7 +67,7 @@ class ReentLock(RLock):
 
 	def release(self):
 		# sys.__stdout__.write("unlocking (reent%s)\n" % ('' if self._RLock__count == 1 else ' -- still held'))
-		if self._RLock__count == 1:
+		if self._count == 1:
 			self.owner = self.tb = None
 		super(ReentLock, self).release()
 

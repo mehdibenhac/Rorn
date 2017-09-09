@@ -1,7 +1,7 @@
 from random import randint
 
-from ResponseWriter import ResponseWriter
-from utils import *
+from .ResponseWriter import ResponseWriter
+from .utils import *
 
 classnames = {
 	'base': 'alert-message',
@@ -24,16 +24,16 @@ class Box:
 
 	def __str__(self):
 		writer = ResponseWriter()
-		print "<div",
+		print("<div", end=' ')
 		if self.id:
-			print "id=\"%s\"" % self.id,
-		print "class=\"box %s rounded\">" % self.clr
+			print("id=\"%s\"" % self.id, end=' ')
+		print("class=\"box %s rounded\">" % self.clr)
 		if self.title:
-			print "<div class=\"title\">%s</div>" % self.title
-		print "<span class=\"boxBody\">"
-		print self.text
-		print "</span>"
-		print "</div>"
+			print("<div class=\"title\">%s</div>" % self.title)
+		print("<span class=\"boxBody\">")
+		print(self.text)
+		print("</span>")
+		print("</div>")
 		return writer.done()
 
 getID = id
@@ -57,22 +57,22 @@ class AlertBox:
 		writer = ResponseWriter()
 
 		if self.close:
-			print "<script type=\"text/javascript\">"
-			print "$(document).ready(function() {hidebox($('#%s'), %d);});" % (self.id, self.close)
-			print "</script>"
+			print("<script type=\"text/javascript\">")
+			print("$(document).ready(function() {hidebox($('#%s'), %d);});" % (self.id, self.close))
+			print("</script>")
 
-		print "<div",
+		print("<div", end=' ')
 		if self.id:
-			print "id=\"%s\"" % self.id,
-		print "class=\"%s\">" % ' '.join(self.getClasses())
+			print("id=\"%s\"" % self.id, end=' ')
+		print("class=\"%s\">" % ' '.join(self.getClasses()))
 		if self.close != None:
-			print "<span class=\"close\">x</span>"
-		print "<span class=\"boxbody\">"
+			print("<span class=\"close\">x</span>")
+		print("<span class=\"boxbody\">")
 		if self.title:
-			print "<strong>%s</strong>: " % self.title
-		print self.text
-		print "</span>"
-		print "</div>"
+			print("<strong>%s</strong>: " % self.title)
+		print(self.text)
+		print("</span>")
+		print("</div>")
 		return writer.done()
 
 class InfoBox(AlertBox):
@@ -105,7 +105,7 @@ class ErrorBox(AlertBox):
 
 	@staticmethod
 	def die(*args):
-		print ErrorBox(*args)
+		print(ErrorBox(*args))
 		done()
 
 ##########################
@@ -119,17 +119,17 @@ class CollapsibleBox:
 
 	def __str__(self):
 		writer = ResponseWriter()
-		print "<div",
+		print("<div", end=' ')
 		if self.id:
-			print "id=\"%s\"" % self.id,
-		print "class=\"box rounded collapsible",
+			print("id=\"%s\"" % self.id, end=' ')
+		print("class=\"box rounded collapsible", end=' ')
 		if self.expanded:
-			print "expanded",
-		print "\">"
+			print("expanded", end=' ')
+		print("\">")
 		if self.title:
-			print "<div class=\"title\">%s</div>" % self.title
-		print "<span class=\"boxBody\">"
-		print self.text
-		print "</span>"
-		print "</div>"
+			print("<div class=\"title\">%s</div>" % self.title)
+		print("<span class=\"boxBody\">")
+		print(self.text)
+		print("</span>")
+		print("</div>")
 		return writer.done()

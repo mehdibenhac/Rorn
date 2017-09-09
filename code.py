@@ -1,13 +1,13 @@
-from __future__ import with_statement
+
 from bleach import clean
-from StringIO import StringIO
+from io import StringIO
 import sys
 from os.path import abspath, isabs, isfile
 
-from ResponseWriter import ResponseWriter
+from .ResponseWriter import ResponseWriter
 from rorn.Box import Box, ErrorBox
 from rorn.Lock import synchronized
-from utils import *
+from .utils import *
 
 try:
 	from SilverCity import Python as SyntaxHighlighter
@@ -17,10 +17,10 @@ except ImportError:
 def showCode(filename, line, around = None):
 	parsedFilename = filename if isabs(filename) else abspath("%s/%s" % (basePath(), filename))
 	if not any(parsedFilename.startswith(path) for path in [basePath()] + sys.path):
-		print ErrorBox("Illegal filename", "File <b>%s</b> not part of codebase or standard library" % stripTags(filename))
+		print(ErrorBox("Illegal filename", "File <b>%s</b> not part of codebase or standard library" % stripTags(filename)))
 		return
 	elif not isfile(parsedFilename):
-		print ErrorBox("Illegal filename", "Unknown file <b>%s</b>" % stripTags(filename))
+		print(ErrorBox("Illegal filename", "Unknown file <b>%s</b>" % stripTags(filename)))
 		return
 
 	with open(parsedFilename) as f:
@@ -36,7 +36,7 @@ def showCode(filename, line, around = None):
 		lines = lines[line-around-1:line+around]
 
 	lines = "<table class=\"code_default dark\">\n%s\n</table>" % '\n'.join(lines)
-	print lines
+	print(lines)
 
 @synchronized('silvercity')
 def highlightCode(text):

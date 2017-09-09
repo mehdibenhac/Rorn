@@ -1,13 +1,13 @@
-from __future__ import with_statement
-from Cookie import SimpleCookie
+
+from http.cookies import SimpleCookie
 import time
 import base64
 import os
-from utils import md5, ucfirst
+from .utils import md5, ucfirst
 from datetime import datetime, timedelta
 import pickle
 
-from Lock import synchronized
+from .Lock import synchronized
 
 serializer = None
 
@@ -19,11 +19,11 @@ class Session(object):
 
 	@synchronized('session')
 	def keys(self):
-		return self.map.keys()
+		return list(self.map.keys())
 
 	@synchronized('session')
 	def values(self):
-		return self.map.values()
+		return list(self.map.values())
 
 	@synchronized('session')
 	def __getitem__(self, k):
@@ -53,22 +53,22 @@ class Session(object):
 
 	@synchronized('session')
 	def __getstate__(self):
-		return (self.key, {k: v for (k, v) in self.map.iteritems() if k in self.persistent})
+		return (self.key, {k: v for (k, v) in self.map.items() if k in self.persistent})
 
 	@synchronized('session')
-	def __setstate__(self, (key, map)):
-		self.key = key
-		self.map = map
-		self.persistent = set(map.keys())
+	def __setstate__(self, tpl):
+		self.key, self.map = tpl
+		self.persistent = set(self.map.keys())
 
 	@staticmethod
 	@synchronized('session')
 	def determineKey(handler):
-		hdr = handler.headers.getheader('Cookie')
-		if not hdr: return Session.generateKey()
-		c = SimpleCookie()
-		c.load(hdr)
-		return c['session'].value if c.has_key('session') else Session.generateKey()
+		if 'Cookie' in handler.headers:
+			c = SimpleCookie()
+			c.load(handler.headers['Cookie'])
+			if 'session' in c:
+				return c['session'].value
+		return Session.generateKey()
 
 	@staticmethod
 	@synchronized('session')
@@ -96,7 +96,7 @@ class Session(object):
 class SessionSerializer:
 	def __init__(self):
 		try:
-			with open('session', 'r') as f:
+			with open('session', 'rb') as f:
 				self.sessions = pickle.load(f)
 		except Exception:
 			self.sessions = {}
@@ -111,7 +111,7 @@ class SessionSerializer:
 		self.saveAll()
 
 	def getIDs(self):
-		return self.sessions.keys()
+		return list(self.sessions.keys())
 
 	def destroy(self, sessionID):
 		del self.sessions[sessionID]
@@ -119,7 +119,7 @@ class SessionSerializer:
 
 	# This is internal; not necessary for other implementations
 	def saveAll(self):
-		with open('session', 'w') as f:
+		with open('session', 'wb') as f:
 			pickle.dump(self.sessions, f)
 
 def setSerializer(store):
@@ -139,5 +139,5 @@ def delay(handler, item):
 def undelay(handler):
 	if 'delayed' in handler.session:
 		for item in handler.session['delayed']:
-			print item
+			print(item)
 		del handler.session['delayed']
