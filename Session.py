@@ -1,4 +1,3 @@
-
 from http.cookies import SimpleCookie
 import time
 import base64
@@ -73,7 +72,7 @@ class Session(object):
 	@staticmethod
 	@synchronized('session')
 	def generateKey():
-		key = md5(os.urandom(128) + str(time.time()))[:-3].replace('/', '$')
+		key = md5(os.urandom(128) + str(time.time()).encode('ascii'))[:-3].replace('/', '$')
 		if key in Session.getIDs():
 			return None
 		return key

@@ -50,7 +50,7 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 	def buildResponse(self, method, postData):
 		self.handler = None
 		self.method = method
-		writer = ResponseWriter()
+		writer = ResponseWriter(True, bytes)
 
 		try: # raise DoneRendering; starts here to catch self.error calls
 			path = self.path
@@ -137,7 +137,7 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 		# self.leftMenu.clear()
 
 		for (fromStr, toStr, count) in list(self.replacements.values()):
-			self.response = self.response.replace(fromStr, toStr, count)
+			self.response = self.response.replace(fromStr.encode('utf8'), toStr.encode('utf8'), count)
 
 	def parseQueryString(self, query):
 		# Adapted from urlparse.parse_qsl
@@ -222,7 +222,7 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 		except:
 			self.response = str(FrameworkException(sys.exc_info())).encode('utf8')
 			self.sendHead(includeCookie = False)
-			self.wfile.write(self.response.encode('utf8'))
+			self.wfile.write(self.response)
 			raise
 
 	def do_HEAD(self, method = 'get', postData = {}):
@@ -234,12 +234,12 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 			self.sendHead()
 		except Redirect as r:
 			self.responseCode = 302
-			self.response = ''
+			self.response = bytes()
 			self.sendHead(additionalHeaders = {'Location': r.target})
 
 	def do_GET(self):
 		self.do_HEAD('get')
-		self.wfile.write(self.response.encode('utf8'))
+		self.wfile.write(self.response)
 
 	def do_POST(self):
 		form = cgi.FieldStorage(fp = self.rfile, headers = self.headers, environ = {'REQUEST_METHOD': 'POST'}, keep_blank_values = True)

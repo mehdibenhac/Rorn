@@ -36,15 +36,22 @@ class ResponseWriterManager:
 manager = ResponseWriterManager()
 
 class ResponseWriter:
-	def __init__(self, autoStart = True):
+	def __init__(self, autoStart = True, storageType = str):
+		if storageType not in (str, bytes):
+			raise ValueError("Invalid storageType")
+		self.storageType = storageType
 		if autoStart:
 			self.start()
 
 	def write(self, data):
+		if self.storageType is str and type(data) is bytes:
+			data = data.decode('utf8')
+		elif self.storageType is bytes and type(data) is str:
+			data = data.encode('utf8')
 		self.data += data
 
 	def clear(self):
-		self.data = ''
+		self.data = self.storageType()
 
 	def start(self):
 		manager.add(self)
