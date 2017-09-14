@@ -1,47 +1,54 @@
+from pathlib import Path
 
-from bleach import clean
-from io import StringIO
-import sys
-from os.path import abspath, isabs, isfile
-
-from .ResponseWriter import ResponseWriter
-from rorn.Box import Box, ErrorBox
-from rorn.Lock import synchronized
 from .utils import *
 
 try:
-	from SilverCity import Python as SyntaxHighlighter
+	import pygments
+	from pygments.lexers import PythonLexer
+	from pygments.formatters import HtmlFormatter
+	from pygments.styles.borland import BorlandStyle as LightStyle
+	from pygments.styles.native import NativeStyle as DarkStyle
 except ImportError:
-	SyntaxHighlighter = None
+	pygments = None
+
+class IllegalFilenameError(RuntimeError): pass
 
 def showCode(filename, line, around = None):
-	parsedFilename = filename if isabs(filename) else abspath("%s/%s" % (basePath(), filename))
-	if not any(parsedFilename.startswith(path) for path in [basePath()] + sys.path):
-		print(ErrorBox("Illegal filename", "File <b>%s</b> not part of codebase or standard library" % stripTags(filename)))
+	path = Path(filename)
+	if not path.is_absolute():
+		path = Path(basePath()).resolve() / path
+	validParents = [Path(basePath())] + [Path(p) for p in sys.path]
+	if not set(path.parents) & set(validParents):
+		raise IllegalFilenameError(f"File {path} not part of codebase or standard library")
+	elif not path.is_file():
+		raise IllegalFilenameError(f"Unknown file {path}")
+
+	data = path.read_text()
+
+	lines = highlightCode(data)
+	if lines is None:
 		return
-	elif not isfile(parsedFilename):
-		print(ErrorBox("Illegal filename", "Unknown file <b>%s</b>" % stripTags(filename)))
-		return
 
-	with open(parsedFilename) as f:
-		data = f.read()
+	line = min(max(line, 1), len(lines))
+	print("<table class=\"code_default dark\">")
+	for i, text in enumerate(lines):
+		if around and not line - around <= i + 1 <= line + around:
+			continue
+		if i + 1 == line:
+			print("<tr class=\"selected_line\">")
+		else:
+			print("<tr>")
+		print("<td class=\"icon\">&nbsp;</td>")
+		print("<td class=\"p_linum\">%s</a></td>" % ('%3d' % (i + 1)).replace(' ', '&nbsp;'))
+		print("<td class=\"code_line\">%s</td>" % text.replace('\t', ' ' * 4))
+		print("</tr>")
+	print("</table>")
 
-	lines = highlightCode(data).split('<br/>')
-	if line < 1:
-		line = 1
-	elif line > len(lines):
-		line = len(lines)
-	lines = ["<tr class=\"%s\"><td class=\"icon\">&nbsp;</td><td class=\"p_linum\"><a name=\"l%d\" href=\"#l%d\">%s</a></td><td class=\"code_line\">%s</td></tr>" % ('selected_line' if i == line else '', i, i, ("%3d" % i).replace(' ', '&nbsp;'), lines[i-1]) for i in range(1, len(lines)+1)]
-	if around:
-		lines = lines[line-around-1:line+around]
-
-	lines = "<table class=\"code_default dark\">\n%s\n</table>" % '\n'.join(lines)
-	print(lines)
-
-@synchronized('silvercity')
 def highlightCode(text):
-	if SyntaxHighlighter is None:
-		return '<br/>'.join(map(clean, text.split('\n')))
-	target = StringIO()
-	SyntaxHighlighter.PythonHTMLGenerator().generate_html(target, text)
-	return target.getvalue()
+	return None if pygments is None else pygments.highlight(text, PythonLexer(), HtmlFormatter(nowrap = True)).split('\n')
+
+def showCodeCSS():
+	print((Path(__file__).resolve().parent / 'syntax-highlighting.css').read_text())
+	if pygments is not None:
+		print(HtmlFormatter(style = LightStyle).get_style_defs('.code_default.light'))
+		print(HtmlFormatter(style = DarkStyle).get_style_defs('.code_default.dark'))

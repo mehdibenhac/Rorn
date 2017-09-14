@@ -9,7 +9,7 @@ import traceback
 
 from .Session import Session, timestamp
 from .Box import Box, ErrorBox
-from .code import showCode
+from .code import showCode, IllegalFilenameError
 from .ResponseWriter import ResponseWriter
 from .FrameworkException import FrameworkException
 from .utils import *
@@ -277,4 +277,7 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 		self.title('Unhandled Error')
 		print(Box('Unhandled Error', formatException(), clr = 'red'))
 		filename, line, fn, stmt = traceback.extract_tb(sys.exc_info()[2])[-1]
-		showCode(filename, line, 5)
+		try:
+			showCode(filename, line, 5)
+		except IllegalFilenameError:
+			print(ErrorBox("Illegal filename", escapeTags(str(e))))

@@ -4,7 +4,7 @@ import os
 import traceback
 
 from .ResponseWriter import ResponseWriter
-from .code import highlightCode
+from .code import highlightCode, showCodeCSS
 from .utils import *
 
 class FrameworkException:
@@ -27,10 +27,7 @@ div.details {
     margin: 15px 0px 15px 30px;
 }
 """)
-
-		with open(os.path.join(os.path.dirname(__file__), 'syntax-highlighting.css')) as f:
-			print(''.join(f.readlines()))
-
+		showCodeCSS()
 		print("</style>")
 
 		print("<div class=\"error\">")
@@ -45,7 +42,7 @@ div.details {
 			for filename, line, fn, stmt in traceback.extract_tb(tb):
 				print("<div class=\"code_header\">%s:%s(%d)</div>" % (filename[lpad:] if filename.startswith(base) else "<i>%s</i>" % filename.split('/')[-1], fn, line))
 				print("<div style=\"padding: 0px 0px 10px 20px\">")
-				print(highlightCode(stmt))
+				print(''.join(highlightCode(stmt)))
 				print("</div>")
 			print("</div>")
 		except:

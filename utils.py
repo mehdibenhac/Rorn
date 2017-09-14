@@ -53,7 +53,7 @@ def formatTrace(frames):
 	for filename, line, fn, stmt in frames:
 		print("<div class=\"code_header\">%s:%s(%d)</div>" % (clean(filename[lpad:]) if filename.startswith(base) else "<i>%s</i>" % clean(filename.split('/')[-1]), clean(fn), line))
 		print("<div style=\"padding: 0px 0px 10px 20px\">")
-		print(highlightCode(stmt))
+		print("<br/>".join(highlightCode(stmt)))
 		print("</div>")
 	print("</div>")
 	return writer.done()
