@@ -60,3 +60,10 @@ class ResponseWriter:
 	def done(self):
 		manager.remove(self)
 		return self.data
+
+	def __enter__(self):
+		self.start()
+		return self
+
+	def __exit__(self, type, value, tb):
+		self.done()

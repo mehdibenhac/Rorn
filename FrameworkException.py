@@ -1,7 +1,5 @@
 
-from bleach import clean
 import os
-import traceback
 
 from .ResponseWriter import ResponseWriter
 from .code import highlightCode, showCodeCSS
@@ -32,7 +30,7 @@ div.details {
 
 		print("<div class=\"error\">")
 		print("<b>Unexpected framework exception caught in rorn before action dispatching:</b><br>")
-		print("<div class=\"details\">%s: %s</div>" % (clean(self.exc[0].__name__), clean(str(self.exc[1])).replace('\n', '<br>')))
+		print("<div class=\"details\">%s: %s</div>" % (escapeTags(self.exc[0].__name__), escapeTags(str(self.exc[1])).replace('\n', '<br>')))
 
 		tb = self.exc[2]
 		try:

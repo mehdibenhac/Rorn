@@ -1,11 +1,10 @@
-from bleach import clean
 import cgi
 import hashlib
 from os.path import dirname
 import sys
 import traceback
 
-def stripTags(value):
+def escapeTags(value):
 	return cgi.escape(value, True)
 
 class DoneRendering(Exception): pass
@@ -41,7 +40,7 @@ def basePath():
 
 def formatException():
 	type, e, tb = sys.exc_info()
-	return "<b>%s: %s</b><br><br>%s" % (clean(type.__name__), clean(str(e)).replace('\n', '<br>'), formatTrace(traceback.extract_tb(tb)))
+	return "<b>%s: %s</b><br><br>%s" % (escapeTags(type.__name__), escapeTags(str(e)).replace('\n', '<br>'), formatTrace(traceback.extract_tb(tb)))
 
 def formatTrace(frames):
 	from .code import highlightCode
@@ -51,7 +50,7 @@ def formatTrace(frames):
 	lpad = len(base) + 1
 	print("<div class=\"code_default light\" style=\"padding: 4px\">")
 	for filename, line, fn, stmt in frames:
-		print("<div class=\"code_header\">%s:%s(%d)</div>" % (clean(filename[lpad:]) if filename.startswith(base) else "<i>%s</i>" % clean(filename.split('/')[-1]), clean(fn), line))
+		print("<div class=\"code_header\">%s:%s(%d)</div>" % (escapeTags(filename[lpad:]) if filename.startswith(base) else "<i>%s</i>" % escapeTags(filename.split('/')[-1]), escapeTags(fn), line))
 		print("<div style=\"padding: 0px 0px 10px 20px\">")
 		print("<br/>".join(highlightCode(stmt)))
 		print("</div>")
