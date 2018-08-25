@@ -10,11 +10,6 @@
 	font-weight: bold;
 }
 
-.selected_line .icon {
-	background: url(/static/images/smallbox.jpg) no-repeat 6px 6px;
-	padding-right: 5px;
-}
-
 .selected_line .p_linum {
 	font-weight: bold;
 }

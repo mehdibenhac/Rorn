@@ -277,8 +277,12 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 	def unhandledError(self):
 		self.title('Unhandled Error')
 		print(Box('Unhandled Error', formatException(), clr = 'red'))
-		filename, line, fn, stmt = traceback.extract_tb(sys.exc_info()[2])[-1]
-		try:
-			showCode(filename, line, 5)
-		except IllegalFilenameError:
-			print(ErrorBox("Illegal filename", escapeTags(str(e))))
+		# Find the first file that's within this project, starting from the top of the call stack
+		base = basePath()
+		for (filename, line, fn, stmt) in traceback.extract_tb(sys.exc_info()[2])[::-1]:
+			if filename.startswith(base):
+				try:
+					showCode(filename, line, 5)
+				except IllegalFilenameError as e:
+					print(ErrorBox("Illegal filename", escapeTags(str(e))))
+				return
