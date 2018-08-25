@@ -33,6 +33,9 @@ class ResponseWriterManager:
 		else:
 			self.old.write(data)
 
+	def flush(self):
+		pass
+
 manager = ResponseWriterManager()
 
 class ResponseWriter:
@@ -40,6 +43,7 @@ class ResponseWriter:
 		if storageType not in (str, bytes):
 			raise ValueError("Invalid storageType")
 		self.storageType = storageType
+		self.running = False
 		if autoStart:
 			self.start()
 
@@ -54,11 +58,17 @@ class ResponseWriter:
 		self.data = self.storageType()
 
 	def start(self):
+		if self.running:
+			self.done()
 		manager.add(self)
 		self.clear()
+		self.running = True
 
 	def done(self):
+		if not self.running:
+			return
 		manager.remove(self)
+		self.running = False
 		return self.data
 
 	def __enter__(self):
