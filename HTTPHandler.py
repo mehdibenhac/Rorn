@@ -100,22 +100,23 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 				self.error("Invalid request", "Unknown %s action <b>%s%s</b>" % (method.upper(), path or '/', " [%s]" % specAction if specAction else ''))
 
 			given = list(query.keys())
-			expected, _, _, defaults = getargspec(self.handler['fn'])
+			expected, _, keywords, defaults = getargspec(self.handler['fn'])
 			defaults = defaults or []
 
-			givenS, expectedS = set(given), set(expected)
-			requiredS = set(expected[:-len(defaults)] if defaults else expected)
+			if keywords is None:
+				givenS, expectedS = set(given), set(expected)
+				requiredS = set(expected[:-len(defaults)] if defaults else expected)
 
-			expectedS -= set(['self', 'handler'])
-			requiredS -= set(['self', 'handler'])
+				expectedS -= set(['self', 'handler'])
+				requiredS -= set(['self', 'handler'])
 
-			over = givenS - expectedS
-			if len(over):
-				self.error("Invalid request", "Unexpected request argument%s: %s" % ('s' if len(over) > 1 else '', ', '.join(over)))
+				over = givenS - expectedS
+				if len(over):
+					self.error("Invalid request", "Unexpected request argument%s: %s" % ('s' if len(over) > 1 else '', ', '.join(over)))
 
-			under = requiredS - givenS
-			if len(under):
-				self.error("Invalid request", "Missing expected request argument%s: %s" % ('s' if len(under) > 1 else '', ', '.join(under)))
+				under = requiredS - givenS
+				if len(under):
+					self.error("Invalid request", "Missing expected request argument%s: %s" % ('s' if len(under) > 1 else '', ', '.join(under)))
 
 			self.path = '/' + path
 			self.replace('{{path}}', path)
