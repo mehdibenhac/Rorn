@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 from .utils import *
 
@@ -29,6 +30,9 @@ def showCode(filename, line, around = None):
 	if lines is None:
 		return
 
+	def nbsp(m):
+		return '&nbsp;' * len(m.group(0))
+
 	line = min(max(line, 1), len(lines))
 	print("<table class=\"code_default dark\">")
 	for i, text in enumerate(lines):
@@ -40,7 +44,7 @@ def showCode(filename, line, around = None):
 			print("<tr>")
 		print("<td class=\"icon\">&nbsp;</td>")
 		print("<td class=\"p_linum\">%s</a></td>" % ('%3d' % (i + 1)).replace(' ', '&nbsp;'))
-		print("<td class=\"code_line\">%s</td>" % text.replace('\t', ' ' * 4))
+		print("<td class=\"code_line\">%s</td>" % re.sub('^ {2,}', nbsp, text.replace('\t', ' ' * 4)))
 		print("</tr>")
 	print("</table>")
 

@@ -41,6 +41,7 @@ class Session(object):
 	@synchronized('session')
 	def remember(self, *keys):
 		self.persistent.update(keys)
+		serializer.save(self.key)
 
 	@synchronized('session')
 	def __contains__(self, k):

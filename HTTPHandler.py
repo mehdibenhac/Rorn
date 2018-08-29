@@ -21,26 +21,24 @@ except ImportError:
 
 handlers = {'get': {}, 'post': {}}
 
-@globalize
-def get(index, action = None, **kw):
+def makeWrapper(httpMethod, index, action, kw):
 	def wrap(f):
 		kw['fn'] = f
-		handlers['get'][re.compile("^%s$" % index), action] = kw
+		handlers[httpMethod][re.compile("^%s$" % index), action] = kw
 		return f
 	return wrap
 
 @globalize
+def get(index, action = None, **kw):
+	return makeWrapper('get', index, action, kw)
+
+@globalize
 def post(index, action = None, **kw):
-	def wrap(f):
-		kw['fn'] = f
-		handlers['post'][re.compile("^%s$" % index), action] = kw
-		return f
-	return wrap
+	return makeWrapper('post', index, action, kw)
 
 class HTTPHandler(BaseHTTPRequestHandler, object):
 	def __init__(self, request, address, server):
 		self.session = None
-		self.replacements = {}
 		self.title(None)
 		self.contentType = 'text/html'
 		self.forceDownload = False
@@ -119,16 +117,15 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 					self.error("Invalid request", "Missing expected request argument%s: %s" % ('s' if len(under) > 1 else '', ', '.join(under)))
 
 			self.path = '/' + path
-			self.replace('{{path}}', path)
-			self.replace('{{get-args}}', queryStr or '')
-
 			self.invokeHandler(self.handler, query)
 		except DoneRendering: pass
 		except StasisError as e:
 			writer.clear()
 			self.title('Database Error')
 			self.error('Database Error', e.message, False)
-		except Redirect: raise
+		except Redirect:
+			writer.done()
+			raise
 		except:
 			writer.start()
 			self.unhandledError()
@@ -136,9 +133,6 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 		self.response = writer.done()
 		self.requestDone()
 		# self.leftMenu.clear()
-
-		for (fromStr, toStr, count) in list(self.replacements.values()):
-			self.response = self.response.replace(fromStr.encode('utf8'), toStr.encode('utf8'), count)
 
 	def parseQueryString(self, query):
 		# Adapted from urlparse.parse_qsl
@@ -195,9 +189,6 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 				query[k] = v
 
 		return query
-
-	def replace(self, fromStr, toStr, count = -1):
-		self.replacements[fromStr] = (fromStr, toStr, count)
 
 	def sendHead(self, additionalHeaders = {}, includeCookie = True):
 		headers = {
@@ -270,7 +261,7 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 	def preprocessQuery(self, query): return query
 
 	def invokeHandler(self, handler, query):
-		handler['fn'](handler = self, **query)
+		return handler['fn'](handler = self, **query)
 
 	def requestDone(self): pass
 
