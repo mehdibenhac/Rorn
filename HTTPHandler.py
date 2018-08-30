@@ -1,11 +1,11 @@
+from bleach import clean
 from http.server import BaseHTTPRequestHandler
 from inspect import getargspec
-from collections import defaultdict
+import json
+import os.path
+from pathlib import Path
 import re
-import cgi
-import sys
 from urllib.parse import unquote
-import traceback
 
 from .Session import Session, timestamp
 from .Box import Box, ErrorBox
@@ -20,6 +20,7 @@ except ImportError:
 	class StasisError(BaseException): pass
 
 handlers = {'get': {}, 'post': {}}
+vueComponents, views = None, None
 
 def makeWrapper(httpMethod, index, action, kw):
 	def wrap(f):
@@ -97,26 +98,8 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 			if self.handler is None:
 				self.error("Invalid request", "Unknown %s action <b>%s%s</b>" % (method.upper(), path or '/', " [%s]" % specAction if specAction else ''))
 
-			given = list(query.keys())
-			expected, _, keywords, defaults = getargspec(self.handler['fn'])
-			defaults = defaults or []
-
-			if keywords is None:
-				givenS, expectedS = set(given), set(expected)
-				requiredS = set(expected[:-len(defaults)] if defaults else expected)
-
-				expectedS -= set(['self', 'handler'])
-				requiredS -= set(['self', 'handler'])
-
-				over = givenS - expectedS
-				if len(over):
-					self.error("Invalid request", "Unexpected request argument%s: %s" % ('s' if len(over) > 1 else '', ', '.join(over)))
-
-				under = requiredS - givenS
-				if len(under):
-					self.error("Invalid request", "Missing expected request argument%s: %s" % ('s' if len(under) > 1 else '', ', '.join(under)))
-
 			self.path = '/' + path
+
 			self.invokeHandler(self.handler, query)
 		except DoneRendering: pass
 		except StasisError as e:
@@ -260,8 +243,48 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 
 	def preprocessQuery(self, query): return query
 
+	def preprocessViewData(self, data): return data
+
 	def invokeHandler(self, handler, query):
-		return handler['fn'](handler = self, **query)
+		printData = 'view-data' in query
+		if printData:
+			del query['view-data']
+
+		given = list(query.keys())
+		expected, _, keywords, defaults = getargspec(handler['fn'])
+		defaults = defaults or []
+
+		if keywords is None:
+			givenS, expectedS = set(given), set(expected)
+			requiredS = set(expected[:-len(defaults)] if defaults else expected)
+
+			expectedS -= {'self', 'handler'}
+			requiredS -= {'self', 'handler'}
+
+			over = givenS - expectedS
+			if len(over):
+				self.error("Invalid request", "Unexpected request argument%s: %s" % ('s' if len(over) > 1 else '', ', '.join(over)))
+
+			under = requiredS - givenS
+			if len(under):
+				self.error("Invalid request", "Missing expected request argument%s: %s" % ('s' if len(under) > 1 else '', ', '.join(under)))
+
+		if views is not None and 'view' in handler:
+			# Error out early if the view doesn't exist
+			view = views[handler['view']]
+
+			# It's not expected that a view-based handler will print, but if it does we let it go out and print the view text after
+			self.viewData = handler['fn'](handler = self, **query)
+			self.viewComponents = view['components']
+			if printData:
+				self.viewData = {'viewData': self.viewData}
+				print("<su-callout title=\"View Data\"><pre>{{ viewData }}</pre></su-callout>")
+			else:
+				print(view['html'])
+
+			#NB: It's up to the app code to deal with view JS/CSS.
+		else:
+			handler['fn'](handler = self, **query)
 
 	def requestDone(self): pass
 
@@ -277,3 +300,36 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 				except IllegalFilenameError as e:
 					print(ErrorBox("Illegal filename", escapeTags(str(e))))
 				return
+
+	@staticmethod
+	def enableStaticHandler(staticRoot):
+		staticRoot = Path(staticRoot).resolve()
+		# self.staticRoot = Path(staticRoot)
+		@get('static/(?P<filename>.+)', name = 'static', allowGuest = True)
+		def fn(handler, filename):
+			types = {
+				'.css': 'text/css',
+				'.js': 'text/javascript',
+				'.pdf': 'application/pdf',
+				'.png': 'image/png',
+				'.svg': 'image/svg+xml'
+			}
+
+			path = (staticRoot / filename).resolve()
+			if not path.exists():
+				return handler.error("Invalid static argument", f"Static resource <b>{clean(filename)}</b> does not exist", False)
+			if staticRoot not in path.parents:
+				return handler.error("Invalid static argument", f"Static resource <b>{clean(filename)}</b> is not allowed", False)
+
+			_, ext = os.path.splitext(path)
+			if ext in types:
+				handler.contentType = types[ext]
+
+			sys.stdout.write(path.read_bytes())
+
+	@staticmethod
+	def enableVue(componentDir, viewDir, componentRoute = None, viewRoute = None):
+		from .Vue import VueComponents, Views
+		global vueComponents, views
+		vueComponents = VueComponents(componentDir, componentRoute)
+		views = Views(viewDir, viewRoute)
