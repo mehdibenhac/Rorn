@@ -1,3 +1,4 @@
+from html.parser import HTMLParser
 import json
 import os.path
 from pathlib import Path
@@ -5,41 +6,75 @@ import re
 
 import HTTPHandler # Make sure get() is available
 
-def vueLoader(path):
-	# This is a super limited version of vue-loader
-	# The file syntax should be close to standard, but the parsing is much more fragile
+class VueParser(HTMLParser):
+	# https://www.w3.org/TR/2011/WD-html-markup-20110113/syntax.html#syntax-elements
+	voidElements = {'area', 'base', 'br', 'col', 'command', 'embed', 'hr', 'img', 'input', 'keygen', 'link', 'meta', 'param', 'source', 'track', 'wbr'}
 
-	blocks = {}
+	def __init__(self, path):
+		super().__init__()
+		self.stack = []
+		self.locs = {}
 
-	wholeRE = re.compile("<([a-z]+) ?/>")
-	startRE = re.compile("<([a-z]+)(?: [^>]*)*>")
-	curBlock = None
-	with open(path) as f:
-		for line in f:
-			if curBlock:
-				if line.rstrip() == f"</{curBlock}>":
-					curBlock = None
-				else:
-					blocks[curBlock] += line
-				continue
+		self.text = path.read_text()
+		try:
+			self.feed(self.text)
+			self.close()
+		except Exception as e:
+			raise ValueError(f"Failed to parse {path}: {e}")
 
-			m = wholeRE.fullmatch(line.rstrip())
-			if m:
-				blocks[m.group(1)] = ''
-				continue
+	def handle_starttag(self, tag, attrs):
+		# print(f"start @{self.getpos()}: {tag}, {attrs}")
+		if tag not in self.voidElements:
+			# The offset is the beginning of the tag, but we want to start at the data inside the tag
+			self.stack.append((tag, attrs, self.getOffset() + len(self.get_starttag_text())))
 
-			m = startRE.fullmatch(line.rstrip())
-			if m:
-				curBlock = m.group(1)
-				if curBlock in blocks:
-					raise SyntaxError(f"Duplicate Vue SFC block: <{curBlock}>")
-				blocks[curBlock] = ''
-				continue
+	def handle_endtag(self, tag):
+		# print(f"end @{self.getpos()}: {tag}")
+		startTag, attrs, off = self.stack.pop()
+		if tag != startTag:
+			endLine, endOff = self.getpos()
+			raise ValueError(f"<{startTag}> closed by </{tag}> at {endLine}:{endOff}")
+		if not self.stack:
+			tag, attrs = self.tagMod(tag, attrs)
+			if tag in self.locs:
+				raise SyntaxError(f"Duplicate Vue SFC block: <{tag}>")
+			self.locs[tag] = (attrs, off, self.getOffset())
 
-			# Current discarding anything outside of a block, but should possibly be an error
-			pass
+	def handle_startendtag(self, tag, attrs):
+		self.handle_starttag(tag, attrs)
+		if tag not in self.voidElements:
+			self.handle_endtag(tag)
 
-	return blocks
+	def getOffset(self):
+		# Convert the line number/offset result from getpos() to a raw offset
+		lineno, off = self.getpos()
+		rtn = 0
+		for _ in range(lineno - 1):
+			rtn = self.text.find('\n', rtn) + 1
+		return rtn + off
+
+	def tagMod(self, tag, attrs):
+		# Tags like <foo bar> are converted to <foo-bar>. <foo bar="baz"> is left alone.
+		# This is used to facilitate custom blocks like <script vue>
+		rest = {}
+		for (lhs, rhs) in attrs:
+			if rhs is None:
+				tag += f"-{lhs}"
+			else:
+				rest[lhs] = rhs
+		return tag, rest
+
+	def getBlocks(self, validBlocks):
+		rtn = {name: self.text[startOff:endOff] for name, (attrs ,startOff, endOff) in self.locs.items()}
+		actualBlocks = set(rtn.keys())
+		if not actualBlocks <= validBlocks:
+			raise SyntaxError(f"Unexpected blocks: {', '.join(sorted(actualBlocks - validBlocks))}")
+
+		for name in rtn:
+			if (name == 'script' or name.startswith('script-')) and rtn[name].strip().startswith('export default '):
+				rtn[name] = rtn[name].replace('export default ', '', 1)
+
+		return rtn
 
 class VueComponents:
 	def __init__(self, rootDir, route = None):
@@ -84,18 +119,16 @@ class VueComponents:
 			raise ValueError(f"Duplicate Vue SFC component: {name}")
 		# print(f"Loading Vue component: {name}")
 
-		blocks = vueLoader(path)
-		if not set(blocks.keys()) <= {'import', 'global', 'template', 'script', 'style'}:
-			raise SyntaxError(f"Unexpected blocks in Vue SFC component: {name}")
+		try:
+			blocks = VueParser(path).getBlocks({'import', 'global', 'template', 'script', 'style'})
+		except Exception as e:
+			raise ValueError(f"Malformed view `{name}': {e}")
 
 		# Don't think there's any use case for this
 		if 'template' not in blocks:
-			raise SyntaxError(f"No <template> block in Vue SFC component: {name}")
+			raise SyntaxError(f"No <template> block in Vue SFC component `{name}'")
 		if 'global' in blocks and blocks['global'] != '':
-			raise SyntaxError(f"Non-empty <global> block in Vue SFC component: {name}")
-
-		if 'script' in blocks and blocks['script'].strip().startswith('export default '):
-			blocks['script'] = blocks['script'].replace('export default ', '', 1)
+			raise SyntaxError(f"Non-empty <global> block in Vue SFC component `{name}'")
 
 		blocks['import'] = blocks['import'].split() if 'import' in blocks else []
 
@@ -169,13 +202,14 @@ class Views:
 		if name in self.views:
 			raise ValueError(f"Duplicate view: {name}")
 
-		blocks = vueLoader(path)
-		if not set(blocks.keys()) <= {'components', 'view', 'script', 'style'}:
-			raise SyntaxError(f"Unexpected blocks in view: {name}")
+		try:
+			blocks = VueParser(path).getBlocks({'components', 'view', 'script', 'style', 'script-vue'})
+		except Exception as e:
+			raise ValueError(f"Malformed view `{name}': {e}")
 
 		# Don't think there's any use case for this
 		if 'view' not in blocks:
-			raise SyntaxError(f"No <view> block in view: {name}")
+			raise SyntaxError(f"No <view> block in view `{name}'")
 		# 'view' is a strange name for the data; call it HTML instead
 		blocks['html'] = blocks['view']
 		del blocks['view']

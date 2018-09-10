@@ -271,16 +271,15 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 
 		if views is not None and 'view' in handler:
 			# Error out early if the view doesn't exist
-			view = views[handler['view']]
+			self.view = views[handler['view']]
 
 			# It's not expected that a view-based handler will print, but if it does we let it go out and print the view text after
 			self.viewData = handler['fn'](handler = self, **query)
-			self.viewComponents = view['components']
 			if printData:
 				self.viewData = {'viewData': self.viewData}
 				print("<su-callout title=\"View Data\"><pre>{{ viewData }}</pre></su-callout>")
 			else:
-				print(view['html'])
+				print(self.view['html'])
 
 			#NB: It's up to the app code to deal with view JS/CSS.
 		else:
