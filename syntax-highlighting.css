@@ -49,6 +49,6 @@
 	background-color: black;
 }
 
-.code_default.dark .code_header {
+.code_default.dark .code_header, .code_default.dark .code_line {
 	color: white;
 }

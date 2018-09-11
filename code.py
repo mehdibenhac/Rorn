@@ -49,7 +49,7 @@ def showCode(filename, line, around = None):
 	print("</table>")
 
 def highlightCode(text):
-	return None if pygments is None else pygments.highlight(text, PythonLexer(), HtmlFormatter(nowrap = True)).split('\n')
+	return [escapeTags(line) for line in text.split('\n')] if pygments is None else pygments.highlight(text, PythonLexer(), HtmlFormatter(nowrap = True)).split('\n')
 
 def showCodeCSS():
 	print((Path(__file__).resolve().parent / 'syntax-highlighting.css').read_text())

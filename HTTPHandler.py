@@ -1,4 +1,3 @@
-from bleach import clean
 from http.server import BaseHTTPRequestHandler
 from inspect import getargspec
 import json
@@ -316,9 +315,9 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 
 			path = (staticRoot / filename).resolve()
 			if not path.exists():
-				return handler.error("Invalid static argument", f"Static resource <b>{clean(filename)}</b> does not exist", False)
+				return handler.error("Invalid static argument", f"Static resource <b>{escapeTags(filename)}</b> does not exist", False)
 			if staticRoot not in path.parents:
-				return handler.error("Invalid static argument", f"Static resource <b>{clean(filename)}</b> is not allowed", False)
+				return handler.error("Invalid static argument", f"Static resource <b>{escapeTags(filename)}</b> is not allowed", False)
 
 			_, ext = os.path.splitext(path)
 			if ext in types:
