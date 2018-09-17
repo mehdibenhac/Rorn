@@ -64,7 +64,7 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 			# Check GET params for a p_ prefix collision
 			for key in query:
 				if key[:2] == 'p_':
-					self.error("Invalid request", "Illegal query key: %s" % key)
+					self.error("Invalid request", "Illegal query key: %s" % key, code = 400)
 
 			# Add POST params to query with a p_ prefix
 			query.update(dict([('p_' + k, v) for (k, v) in postData.items()]))
@@ -88,14 +88,14 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 					self.handler = handler
 					for k, v in list(match.groupdict().items()):
 						if k in query:
-							self.error("Invalid request", "Duplicate key in request: %s" % k)
+							self.error("Invalid request", "Duplicate key in request: %s" % k, code = 400)
 						query[k] = v
 					break
 
 			query = self.preprocessQuery(query)
 
 			if self.handler is None:
-				self.error("Invalid request", "Unknown %s action <b>%s%s</b>" % (method.upper(), path or '/', " [%s]" % specAction if specAction else ''))
+				self.error("Invalid request", "Unknown %s action <b>%s%s</b>" % (method.upper(), path or '/', " [%s]" % specAction if specAction else ''), code = 404)
 
 			self.path = '/' + path
 
@@ -104,7 +104,7 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 		except StasisError as e:
 			writer.clear()
 			self.title('Database Error')
-			self.error('Database Error', e.message, False)
+			self.error('Database Error', e.message, False, code = 500)
 		except Redirect:
 			writer.done()
 			raise
@@ -137,7 +137,7 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 
 				if key in query:
 					if not isinstance(query[key], list if subKeys == [''] else dict):
-						self.error("Invalid request", "Type conflict on query key %s" % key)
+						self.error("Invalid request", "Type conflict on query key %s" % key, code = 400)
 				else:
 					query[key] = [] if subKeys == [''] else {}
 
@@ -145,7 +145,7 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 				for thisSubKey in subKeys[:-2]:
 					if thisSubKey in base:
 						if not isinstance(base[thisSubKey], dict):
-							self.error("Invalid request", "Type conflict on query key %s, subkey %s" % (key, thisSubKey))
+							self.error("Invalid request", "Type conflict on query key %s, subkey %s" % (key, thisSubKey), code = 400)
 					else:
 						base[thisSubKey] = {}
 					base = base[thisSubKey]
@@ -154,7 +154,7 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 				if len(subKeys) >= 2:
 					if subKeys[-2] in base:
 						if not isinstance(base[subKeys[-2]], type):
-							self.error("Invalid request", "Type conflict on query key %s, subkey %s" % (key, subKeys[-2]))
+							self.error("Invalid request", "Type conflict on query key %s, subkey %s" % (key, subKeys[-2]), code = 400)
 					else:
 						base[subKeys[-2]] = type()
 					base = base[subKeys[-2]]
@@ -163,11 +163,11 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 					base.append(v)
 				else:
 					if subKeys[-1] in base:
-						self.error("Invalid request", "Collision on query key %s, subkey %s" % (key, subKeys[-1]))
+						self.error("Invalid request", "Collision on query key %s, subkey %s" % (key, subKeys[-1]), code = 400)
 					base[subKeys[-1]] = v
 			else:
 				if k in query:
-					self.error("Invalid request", "Collision on query key %s" % k)
+					self.error("Invalid request", "Collision on query key %s" % k, code = 400)
 				query[k] = v
 
 		return query
@@ -231,8 +231,10 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 		self.do_HEAD('post', data)
 		self.wfile.write(self.response)
 
-	def error(self, title, text, isDone = True):
+	def error(self, title, text, isDone = True, code = None):
 		print(ErrorBox(title, text))
+		if code is not None:
+			self.responseCode = code
 		if isDone:
 			done()
 
@@ -262,11 +264,11 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 
 			over = givenS - expectedS
 			if len(over):
-				self.error("Invalid request", "Unexpected request argument%s: %s" % ('s' if len(over) > 1 else '', ', '.join(over)))
+				self.error("Invalid request", "Unexpected request argument%s: %s" % ('s' if len(over) > 1 else '', ', '.join(over)), code = 400)
 
 			under = requiredS - givenS
 			if len(under):
-				self.error("Invalid request", "Missing expected request argument%s: %s" % ('s' if len(under) > 1 else '', ', '.join(under)))
+				self.error("Invalid request", "Missing expected request argument%s: %s" % ('s' if len(under) > 1 else '', ', '.join(under)), code = 400)
 
 		if views is not None and 'view' in handler:
 			# Error out early if the view doesn't exist
@@ -315,9 +317,9 @@ class HTTPHandler(BaseHTTPRequestHandler, object):
 
 			path = (staticRoot / filename).resolve()
 			if not path.exists():
-				return handler.error("Invalid static argument", f"Static resource <b>{escapeTags(filename)}</b> does not exist", False)
+				return handler.error("Invalid static argument", f"Static resource <b>{escapeTags(filename)}</b> does not exist", False, code = 404)
 			if staticRoot not in path.parents:
-				return handler.error("Invalid static argument", f"Static resource <b>{escapeTags(filename)}</b> is not allowed", False)
+				return handler.error("Invalid static argument", f"Static resource <b>{escapeTags(filename)}</b> is not allowed", False, code = 403)
 
 			_, ext = os.path.splitext(path)
 			if ext in types:
